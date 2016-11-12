@@ -9,8 +9,18 @@ import sys
 import datetime
 import webbrowser
 import yaml
-from pocket import Pocket
+import requests
 
+from pocket import Pocket
+from readability import Document
+
+# TODO:
+# 1. Add summarization algorithm (or may be check description tag for ready to eat summary)
+# 2. Collect tags from the article that can be used in Jekyll
+# 3. Move content to _post rather _post/linkPosts
+# 4. May be add pagination
+# 5. Check if the title in front matter can be escaped for quotes and other such characters
+# 6. Add new dependencies to setup.py
 
 def usage():
     usage_text = '''
@@ -27,10 +37,8 @@ def usage():
     '''
     print(usage_text)
 
-
 def get_config_filename():
     return os.getcwd() + '/_pockyll.yml'
-
 
 def create_config():
     '''
@@ -47,7 +55,6 @@ def create_config():
         'linkpost_draft_dir': '_drafts/linkposts'}
     save_config(default_config)
 
-
 def save_config(config, filename=get_config_filename()):
     '''
     Saves the configuration to a YAML file.
@@ -55,7 +62,6 @@ def save_config(config, filename=get_config_filename()):
     configfile = io.open(filename, 'w', encoding='utf8')
     yaml.dump(config, configfile)
     configfile.close()
-
 
 def load_config(filename=get_config_filename()):
     '''
@@ -72,7 +78,6 @@ def load_config(filename=get_config_filename()):
                            'run `pockyll init` prior to the current '
                            'command?' % filename)
     return config
-
 
 def auth(config):
     '''
@@ -112,7 +117,6 @@ def auth(config):
     save_config(config)
     return config
 
-
 def get_list(config):
     '''
     Requests the list of items tagged with `tags` since `since`,
@@ -130,34 +134,49 @@ def get_list(config):
                               detailType='simple')
     return items_list
 
-
 def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     path = ''
     if not is_draft:
         path = config.get("linkpost_post_dir", "_posts/linkposts")
     else:
         path = config.get("linkpost_draft_dir", "_drafts/linkposts")
+
+    # Check if path exists    
     if not os.path.exists(path):
         raise RuntimeError(
             "The linkpost destination path %s does not exist. Please "
             "double-check spelling and create the destination path if "
             "applicable." % path)
+
+    # Create file for this post
     linkfilename = "%s/%s-%s.markdown" % (
         path, timestamp.strftime('%Y-%m-%d'), item_id)
-    # skip if file exists
+
+    # Skip if file exists
     if os.path.exists(linkfilename):
         raise IOError('Doggedly refusing to overwrite existing file: %s' %
                       linkfilename)
+
+    # Get parsed contents from article
+    response = requests.get(url)
+    doc = Document(response.text)
+    content = doc.summary(True)
+
     linkfile = io.open(linkfilename, 'w', encoding='utf8')
     text = '''---
+layout: post
+type: 'reference'
 title: '%s'
 date: %s
-type: 'reference'
 ref: %s
 ---
 
-[%s](%s)
-''' % (title, timestamp.strftime('%Y-%m-%dT%H:%M:%S%z'), url, title, url)
+%s
+
+[View Original](%s)
+''' % (title, timestamp.strftime('%Y-%m-%dT%H:%M:%S%z'), url, content, url)
+
+    # Write to file and close
     linkfile.write(text)
     linkfile.close()
 
@@ -216,7 +235,6 @@ def sync(config):
               (n_items - n_drafts - n_skipped, n_drafts, n_skipped))
     else:
         print('No new bookmarks. Done.')
-
 
 def main(argv=None):
     if argv is None:
