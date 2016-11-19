@@ -13,6 +13,7 @@ import requests
 
 from pocket import Pocket
 from readability import Document
+from lxml.html import fromstring
 
 # TODO:
 # 1. Add summarization algorithm (or may be check description tag for ready to eat summary)
@@ -21,6 +22,8 @@ from readability import Document
 # 4. May be add pagination
 # 5. Check if the title in front matter can be escaped for quotes and other such characters
 # 6. Add new dependencies to setup.py
+# 7. Find all assets and download them to local machine
+# 8. Complete partial URLs with domain from article source
 
 def usage():
     usage_text = '''
@@ -134,6 +137,46 @@ def get_list(config):
                               detailType='simple')
     return items_list
 
+def get_meta_desc(html):
+    '''
+    Extract meta description from HTML content
+    '''
+    tree = fromstring(html)
+    desc = tree.xpath('//meta[@name="description"]/@content')   # try description tag
+    if not desc:
+        desc = tree.xpath('//meta[@name="og:description"]/@content')   # try og:description tag
+    if not desc:
+        desc = tree.xpath('//meta[@name="twitter:description"]/@content')   # try og:description tag    
+    return desc
+
+def get_doc_summary(html, url):
+    '''
+    Parse document text and extract summary with summarization 
+    algorithms. This is helpful when meta-desc tag is not available
+    '''
+    from sumy.parsers.html import HtmlParser
+    # from sumy.parsers.plaintext import PlaintextParser
+    from sumy.nlp.tokenizers import Tokenizer
+    from sumy.summarizers.text_rank import TextRankSummarizer as Summarizer
+    from sumy.nlp.stemmers import Stemmer
+    from sumy.utils import get_stop_words
+
+    LANGUAGE = "english"
+    SENTENCES_COUNT = 3
+
+    parser = HtmlParser.from_string(html, url, Tokenizer(LANGUAGE))
+    # or for plain text files
+    # parser = PlaintextParser.from_file("document.txt", Tokenizer(LANGUAGE))
+    stemmer = Stemmer(LANGUAGE)
+
+    summarizer = Summarizer(stemmer)
+    summarizer.stop_words = get_stop_words(LANGUAGE)
+
+    res = ""
+    for sentence in summarizer(parser.document, SENTENCES_COUNT):
+        res += sentence
+    return res
+
 def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     path = ''
     if not is_draft:
@@ -166,7 +209,7 @@ def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     text = '''---
 layout: post
 type: 'reference'
-title: '%s'
+title: %s
 date: %s
 ref: %s
 ---

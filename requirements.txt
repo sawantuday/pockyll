@@ -1,0 +1,12 @@
+breadability==0.1.20
+chardet==2.3.0
+cssselect==1.0.0
+docopt==0.6.2
+lxml==3.6.4
+nltk==3.2.1
+pocket==0.3.6
+pockyll==0.1.1
+PyYAML==3.12
+readability-lxml==0.6.2
+requests==2.11.1
+sumy==0.5.1
