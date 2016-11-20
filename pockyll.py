@@ -16,7 +16,7 @@ from readability import Document
 from lxml.html import fromstring
 
 # TODO:
-# 1. Add summarization algorithm (or may be check description tag for ready to eat summary)
+# 1. DONE - Add summarization algorithm (or may be check description tag for ready to eat summary)
 # 2. Collect tags from the article that can be used in Jekyll
 # 3. Move content to _post rather _post/linkPosts
 # 4. May be add pagination
@@ -24,6 +24,7 @@ from lxml.html import fromstring
 # 6. Add new dependencies to setup.py
 # 7. Find all assets and download them to local machine
 # 8. Complete partial URLs with domain from article source
+# 9. Categorize articles
 
 def usage():
     usage_text = '''
@@ -174,7 +175,7 @@ def get_doc_summary(html, url):
 
     res = ""
     for sentence in summarizer(parser.document, SENTENCES_COUNT):
-        res += sentence
+        res += str(sentence)
     return res
 
 def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
@@ -204,6 +205,9 @@ def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     response = requests.get(url)
     doc = Document(response.text)
     content = doc.summary(True)
+    summary = get_meta_desc(response.text)
+    if not summary:
+        summary = get_doc_summary(response.text, url)
 
     linkfile = io.open(linkfilename, 'w', encoding='utf8')
     text = '''---
@@ -212,12 +216,13 @@ type: 'reference'
 title: %s
 date: %s
 ref: %s
+excerpt: %s
 ---
 
 %s
 
 [View Original](%s)
-''' % (title, timestamp.strftime('%Y-%m-%dT%H:%M:%S%z'), url, content, url)
+''' % (title, timestamp.strftime('%Y-%m-%dT%H:%M:%S%z'), url, summary, content, url)
 
     # Write to file and close
     linkfile.write(text)

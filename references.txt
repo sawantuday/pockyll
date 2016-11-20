@@ -1,0 +1,5 @@
+sumy
+https://pypi.python.org/pypi/sumy
+https://github.com/daleroberts/math-finance-cheat-sheet
+https://github.com/grangier/python-goose
+https://gist.github.com/alexbowe/879414
