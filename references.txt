@@ -1,5 +1,12 @@
-sumy
+Sumy
 https://pypi.python.org/pypi/sumy
 https://github.com/daleroberts/math-finance-cheat-sheet
+
+article extraction 
 https://github.com/grangier/python-goose
+
+Document summary script
 https://gist.github.com/alexbowe/879414
+
+RAKE
+https://github.com/fabianvf/python-rake

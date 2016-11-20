@@ -17,14 +17,15 @@ from lxml.html import fromstring
 
 # TODO:
 # 1. DONE - Add summarization algorithm (or may be check description tag for ready to eat summary)
-# 2. Collect tags from the article that can be used in Jekyll
+# 2. DONE - Collect tags from the article that can be used in Jekyll
 # 3. Move content to _post rather _post/linkPosts
 # 4. May be add pagination
-# 5. Check if the title in front matter can be escaped for quotes and other such characters
+# 5. DONE - Check if the title in front matter can be escaped for quotes and other such characters
 # 6. Add new dependencies to setup.py
 # 7. Find all assets and download them to local machine
 # 8. Complete partial URLs with domain from article source
 # 9. Categorize articles
+# 10. Title needs to be considered/given more importance in keyword/tag extraction 
 
 def usage():
     usage_text = '''
@@ -178,6 +179,28 @@ def get_doc_summary(html, url):
         res += str(sentence)
     return res
 
+def get_doc_keywords(html, articleDom):
+    '''
+    Search meta keyword tag for any predefined keywords
+    Else use RAKE library to extract keywords from document content
+    Return first five keywords 
+    '''
+    tree = fromstring(html)
+    keywords = tree.xpath('//meta[@name="keywords"]/@content')
+    if keywords:
+        arr = keywords.split(',')[:5] 	# return first five keywords
+        return [x.strip(' ') for x in arr]
+    else:
+        # Use RAKE to extract keywords from article contetnt
+        from RAKE import Rake
+        import operator
+        node = fromstring(articleDom)
+        text = node.text_content()
+        extractor = Rake("RAKE/stoplists/SmartStoplist.txt", 3, 3, 5) # min 3 chars, max 3 words, word appears min 5 times
+        keywords = [x[0] for x in extractor.run(text)]
+        keywords = keywords[:5] # get top five 
+        return [x.strip(' ') for x in keywords]
+
 def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     path = ''
     if not is_draft:
@@ -208,6 +231,7 @@ def create_linkpost(config, item_id, title, url, timestamp, is_draft=True):
     summary = get_meta_desc(response.text)
     if not summary:
         summary = get_doc_summary(response.text, url)
+    keywords = get_doc_keywords(response.text, content)
 
     linkfile = io.open(linkfilename, 'w', encoding='utf8')
     text = '''---
